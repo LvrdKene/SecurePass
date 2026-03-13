@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .generator-hero {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(255, 122, 89, 0.12));
+        border-radius: var(--radius-lg);
+        padding: 28px;
+    }
+
+    .password-output {
+        background: #0f172a;
+        color: #f8fafc;
+        border-radius: 14px;
+        padding: 16px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: 1px;
+    }
+
+    .copy-chip {
+        border: none;
+        background: rgba(37, 99, 235, 0.18);
+        color: #1d4ed8;
+        font-weight: 700;
+        border-radius: 12px;
+        padding: 8px 12px;
+    }
+
+    .copy-chip.success {
+        background: rgba(34, 197, 94, 0.2);
+        color: #166534;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row g-4 align-items-start mb-4">
+        <div class="col-lg-5">
+            <div class="generator-hero reveal">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill" style="background: rgba(37, 99, 235, 0.15); color: #1d4ed8; font-weight: 600;">
+                    Generator Studio
+                </div>
+                <h1 class="mt-3 mb-2">Build a strong password in seconds</h1>
+                <p class="text-muted mb-4">Choose a length, generate instantly, and copy with one click. Designed for clarity and speed.</p>
+                <div class="card">
+                    <div class="card-header">Settings</div>
+                    <div class="card-body">
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-outline-secondary w-100" type="button" id="toggle-password-mode" onclick="setGeneratorMode('password')">Password</button>
+                            <button class="btn btn-outline-secondary w-100" type="button" id="toggle-pin-mode" onclick="setGeneratorMode('pin')">PIN</button>
+                        </div>
+
+                        <div id="password-controls">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="length" class="form-label">Password Length</label>
+                                <input type="range" class="form-range" id="length-slider" name="length" min="8" max="50" value="16" oninput="updateLengthValue()">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">8</small>
+                                    <span class="badge bg-primary fs-6" id="length-value">16</span>
+                                    <small class="text-muted">50</small>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 btn-lg">Generate Secure Password</button>
+                        </form>
+                        </div>
+
+                        <div id="pin-controls" style="display: none;">
+                            <div class="mb-3">
+                                <label for="pin-length" class="form-label">PIN Length</label>
+                                <input type="number" class="form-control" id="pin-length" min="4" max="12" value="6">
+                            </div>
+                            <button class="btn btn-primary w-100 btn-lg" type="button" onclick="generatePin()">Generate PIN</button>
+                            <div class="form-text mt-2">PINs are generated locally and never stored.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card h-100 reveal delay-1">
+                <div class="card-header">Your Output</div>
+                <div class="card-body">
+                    <div id="password-output">
+                        {% if generated_password %}
+                        <div class="password-output d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span id="password-display">{{ generated_password }}</span>
+                            <button class="copy-chip" type="button" onclick="copyToClipboard()" id="copy-btn">
+                                <span id="copy-icon">Copy</span>
+                            </button>
+                        </div>
+                        <div class="row g-3 mt-4">
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-3" style="background: var(--panel-2);">
+                                    <div class="fw-semibold">Length</div>
+                                    <div class="text-muted">{{ generated_password|length }} characters</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-3" style="background: var(--panel-2);">
+                                    <div class="fw-semibold">Strength</div>
+                                    <div class="text-muted">Very strong mix</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-success mt-4">
+                            <strong>Ready to use.</strong> This password includes uppercase, lowercase, numbers, and symbols.
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <h4 class="text-muted mt-2">Generate your first password</h4>
+                            <p class="text-muted mb-0">Pick a length and press generate to see your result.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div id="pin-output-area" style="display: none;">
+                        <div class="password-output d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span id="pin-output">000000</span>
+                            <button class="copy-chip" type="button" onclick="copyPin()" id="copy-pin-btn">
+                                <span id="copy-pin-icon">Copy</span>
+                            </button>
+                        </div>
+                        <div class="alert alert-info mt-4">
+                            <strong>PIN ready.</strong> Tap generate again for a new one.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateLengthValue() {
+    const slider = document.getElementById('length-slider');
+    const value = document.getElementById('length-value');
+    if (slider && value) {
+        value.textContent = slider.value;
+    }
+}
+
+function copyToClipboard() {
+    const passwordField = document.getElementById('password-display');
+    const copyBtn = document.getElementById('copy-btn');
+    const copyIcon = document.getElementById('copy-icon');
+    if (!passwordField || !copyBtn || !copyIcon) return;
+
+    navigator.clipboard.writeText(passwordField.textContent).then(function() {
+        copyIcon.textContent = 'Copied';
+        copyBtn.classList.add('success');
+        copyBtn.innerHTML = '<span id="copy-icon">Copied</span>';
+
+        setTimeout(() => {
+            copyBtn.classList.remove('success');
+            copyBtn.innerHTML = '<span id="copy-icon">Copy</span>';
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', updateLengthValue);
+
+function setGeneratorMode(mode) {
+    const passwordControls = document.getElementById('password-controls');
+    const pinControls = document.getElementById('pin-controls');
+    const passwordOutput = document.getElementById('password-output');
+    const pinOutput = document.getElementById('pin-output-area');
+    const passwordBtn = document.getElementById('toggle-password-mode');
+    const pinBtn = document.getElementById('toggle-pin-mode');
+
+    if (!passwordControls || !pinControls || !passwordOutput || !pinOutput || !passwordBtn || !pinBtn) return;
+
+    const isPin = mode === 'pin';
+    passwordControls.style.display = isPin ? 'none' : 'block';
+    pinControls.style.display = isPin ? 'block' : 'none';
+    passwordOutput.style.display = isPin ? 'none' : 'block';
+    pinOutput.style.display = isPin ? 'block' : 'none';
+
+    passwordBtn.classList.toggle('btn-primary', !isPin);
+    passwordBtn.classList.toggle('btn-outline-secondary', isPin);
+    pinBtn.classList.toggle('btn-primary', isPin);
+    pinBtn.classList.toggle('btn-outline-secondary', !isPin);
+}
+
+function generatePin() {
+    const lengthInput = document.getElementById('pin-length');
+    const output = document.getElementById('pin-output');
+    if (!lengthInput || !output) return;
+
+    let length = parseInt(lengthInput.value, 10);
+    if (Number.isNaN(length)) {
+        length = 6;
+    }
+    length = Math.min(12, Math.max(4, length));
+    lengthInput.value = length;
+
+    let pin = '';
+    for (let i = 0; i < length; i += 1) {
+        pin += Math.floor(Math.random() * 10).toString();
+    }
+    output.textContent = pin;
+}
+
+function copyPin() {
+    const output = document.getElementById('pin-output');
+    const copyBtn = document.getElementById('copy-pin-btn');
+    const copyIcon = document.getElementById('copy-pin-icon');
+    if (!output || !copyBtn || !copyIcon) return;
+
+    navigator.clipboard.writeText(output.textContent).then(function() {
+        copyIcon.textContent = 'Copied';
+        copyBtn.classList.add('success');
+
+        setTimeout(() => {
+            copyBtn.classList.remove('success');
+            copyIcon.textContent = 'Copy';
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    setGeneratorMode('password');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-4 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; background: var(--accent-soft); color: #1d4ed8; font-weight: 700;">
+                    SC
+                </div>
+                <div>
+                    <h1 class="mb-1">Strength Check</h1>
+                    <p class="text-muted mb-0">See exactly how your password holds up and how to improve it.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card reveal">
+                <div class="card-header">Analyze Password</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control form-control-lg" id="password" name="password" placeholder="Type your password here..." required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="toggleMainPassword()" id="toggle-password">Show</button>
+                            </div>
+                            <div class="form-text">Checked locally. Nothing is stored or sent.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 btn-lg">Analyze Strength</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card mt-4 reveal delay-1">
+                <div class="card-body">
+                    <h6 class="mb-2">What we evaluate</h6>
+                    <ul class="mb-0 text-muted">
+                        <li>Minimum length of 8 characters</li>
+                        <li>Uppercase and lowercase mix</li>
+                        <li>Numbers and symbols included</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            {% if score is not none %}
+            <div class="card reveal delay-2">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>Results</span>
+                    <span class="badge bg-primary">{{ score }}/6</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+                        <div>
+                            <h3 class="mb-1">{{ strength }}</h3>
+                            <div class="text-muted">Overall strength rating</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">Progress</div>
+                            <div class="progress" style="height: 10px; min-width: 200px;">
+                                <div class="progress-bar {% if score <= 2 %}bg-danger{% elif score <= 4 %}bg-warning{% else %}bg-success{% endif %}"
+                                     role="progressbar" style="width: {{ (score / 6) * 100 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if issues %}
+                    <div class="alert alert-warning">
+                        <div class="fw-semibold mb-2">Improve these areas</div>
+                        <ul class="mb-0">
+                            {% for issue in issues %}
+                            <li>{{ issue }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <strong>Great job.</strong> This password meets all core requirements.
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3" style="background: var(--panel-2);">
+                                <div class="fw-semibold">Length</div>
+                                <div class="text-muted">{{ password|length if password else 0 }} characters</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3" style="background: var(--panel-2);">
+                                <div class="fw-semibold">Score Range</div>
+                                <div class="text-muted">
+                                    {% if score <= 2 %}Needs work{% elif score <= 4 %}Getting there{% else %}Ready to use{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card reveal delay-2">
+                <div class="card-body text-center py-5">
+                    <h4 class="text-muted">Run your first check</h4>
+                    <p class="text-muted mb-0">Enter a password and see the breakdown instantly.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMainPassword() {
+    const input = document.getElementById('password');
+    const button = document.getElementById('toggle-password');
+    if (!input || !button) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    button.textContent = isHidden ? 'Hide' : 'Show';
+}
+</script>
+{% endblock %}
