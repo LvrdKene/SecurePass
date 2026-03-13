@@ -44,13 +44,14 @@
                 <div class="card">
                     <div class="card-header">Settings</div>
                     <div class="card-body">
-                        <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-outline-secondary w-100" type="button" id="toggle-password-mode" onclick="setGeneratorMode('password')">Password</button>
-                            <button class="btn btn-outline-secondary w-100" type="button" id="toggle-pin-mode" onclick="setGeneratorMode('pin')">PIN</button>
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <button class="btn btn-outline-secondary" style="flex: 1 1 120px;" type="button" id="toggle-password-mode" onclick="setGeneratorMode('password')">Password</button>
+                            <button class="btn btn-outline-secondary" style="flex: 1 1 120px;" type="button" id="toggle-pin-mode" onclick="setGeneratorMode('pin')">PIN</button>
+                            <button class="btn btn-outline-secondary" style="flex: 1 1 120px;" type="button" id="toggle-passphrase-mode" onclick="setGeneratorMode('passphrase')">Passphrase</button>
                         </div>
 
                         <div id="password-controls">
-                        <form method="POST">
+                        <form method="POST" id="password-form">
                             <div class="mb-3">
                                 <label for="length" class="form-label">Password Length</label>
                                 <input type="range" class="form-range" id="length-slider" name="length" min="8" max="50" value="16" oninput="updateLengthValue()">
@@ -60,7 +61,7 @@
                                     <small class="text-muted">50</small>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 btn-lg">Generate Secure Password</button>
+                            <button type="button" class="btn btn-primary w-100 btn-lg" onclick="generatePasswordClient()">Generate Secure Password</button>
                         </form>
                         </div>
 
@@ -72,6 +73,19 @@
                             <button class="btn btn-primary w-100 btn-lg" type="button" onclick="generatePin()">Generate PIN</button>
                             <div class="form-text mt-2">PINs are generated locally and never stored.</div>
                         </div>
+
+                        <div id="passphrase-controls" style="display: none;">
+                            <div class="mb-3">
+                                <label for="phrase-words" class="form-label">Word Count</label>
+                                <input type="number" class="form-control" id="phrase-words" min="3" max="8" value="4">
+                            </div>
+                            <div class="mb-3">
+                                <label for="phrase-separator" class="form-label">Separator</label>
+                                <input type="text" class="form-control" id="phrase-separator" value="-">
+                            </div>
+                            <button class="btn btn-primary w-100 btn-lg" type="button" onclick="generatePassphrase()">Generate Passphrase</button>
+                            <div class="form-text mt-2">Passphrases are generated locally and never stored.</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -82,18 +96,17 @@
                 <div class="card-header">Your Output</div>
                 <div class="card-body">
                     <div id="password-output">
-                        {% if generated_password %}
                         <div class="password-output d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <span id="password-display">{{ generated_password }}</span>
+                            <span id="password-display">{% if generated_password %}{{ generated_password }}{% else %}Generate your first password{% endif %}</span>
                             <button class="copy-chip" type="button" onclick="copyToClipboard()" id="copy-btn">
                                 <span id="copy-icon">Copy</span>
                             </button>
                         </div>
-                        <div class="row g-3 mt-4">
+                        <div class="row g-3 mt-4" id="password-stats" {% if not generated_password %}style="display: none;"{% endif %}>
                             <div class="col-md-6">
                                 <div class="p-3 rounded-3" style="background: var(--panel-2);">
                                     <div class="fw-semibold">Length</div>
-                                    <div class="text-muted">{{ generated_password|length }} characters</div>
+                                    <div class="text-muted" id="password-length">{% if generated_password %}{{ generated_password|length }} characters{% else %}0 characters{% endif %}</div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -103,15 +116,9 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="alert alert-success mt-4">
+                        <div class="alert alert-success mt-4" id="password-alert" {% if not generated_password %}style="display: none;"{% endif %}>
                             <strong>Ready to use.</strong> This password includes uppercase, lowercase, numbers, and symbols.
                         </div>
-                        {% else %}
-                        <div class="text-center py-5">
-                            <h4 class="text-muted mt-2">Generate your first password</h4>
-                            <p class="text-muted mb-0">Pick a length and press generate to see your result.</p>
-                        </div>
-                        {% endif %}
                     </div>
 
                     <div id="pin-output-area" style="display: none;">
@@ -123,6 +130,18 @@
                         </div>
                         <div class="alert alert-info mt-4">
                             <strong>PIN ready.</strong> Tap generate again for a new one.
+                        </div>
+                    </div>
+
+                    <div id="passphrase-output-area" style="display: none;">
+                        <div class="password-output d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span id="passphrase-output">river-storm-slate-ember</span>
+                            <button class="copy-chip" type="button" onclick="copyPassphrase()" id="copy-passphrase-btn">
+                                <span id="copy-passphrase-icon">Copy</span>
+                            </button>
+                        </div>
+                        <div class="alert alert-info mt-4">
+                            <strong>Passphrase ready.</strong> Generate again for a different one.
                         </div>
                     </div>
                 </div>
@@ -165,23 +184,31 @@ document.addEventListener('DOMContentLoaded', updateLengthValue);
 function setGeneratorMode(mode) {
     const passwordControls = document.getElementById('password-controls');
     const pinControls = document.getElementById('pin-controls');
+    const passphraseControls = document.getElementById('passphrase-controls');
     const passwordOutput = document.getElementById('password-output');
     const pinOutput = document.getElementById('pin-output-area');
+    const passphraseOutput = document.getElementById('passphrase-output-area');
     const passwordBtn = document.getElementById('toggle-password-mode');
     const pinBtn = document.getElementById('toggle-pin-mode');
+    const passphraseBtn = document.getElementById('toggle-passphrase-mode');
 
-    if (!passwordControls || !pinControls || !passwordOutput || !pinOutput || !passwordBtn || !pinBtn) return;
+    if (!passwordControls || !pinControls || !passphraseControls || !passwordOutput || !pinOutput || !passphraseOutput || !passwordBtn || !pinBtn || !passphraseBtn) return;
 
     const isPin = mode === 'pin';
-    passwordControls.style.display = isPin ? 'none' : 'block';
+    const isPassphrase = mode === 'passphrase';
+    passwordControls.style.display = isPin || isPassphrase ? 'none' : 'block';
     pinControls.style.display = isPin ? 'block' : 'none';
-    passwordOutput.style.display = isPin ? 'none' : 'block';
+    passphraseControls.style.display = isPassphrase ? 'block' : 'none';
+    passwordOutput.style.display = isPin || isPassphrase ? 'none' : 'block';
     pinOutput.style.display = isPin ? 'block' : 'none';
+    passphraseOutput.style.display = isPassphrase ? 'block' : 'none';
 
-    passwordBtn.classList.toggle('btn-primary', !isPin);
-    passwordBtn.classList.toggle('btn-outline-secondary', isPin);
+    passwordBtn.classList.toggle('btn-primary', !isPin && !isPassphrase);
+    passwordBtn.classList.toggle('btn-outline-secondary', isPin || isPassphrase);
     pinBtn.classList.toggle('btn-primary', isPin);
     pinBtn.classList.toggle('btn-outline-secondary', !isPin);
+    passphraseBtn.classList.toggle('btn-primary', isPassphrase);
+    passphraseBtn.classList.toggle('btn-outline-secondary', !isPassphrase);
 }
 
 function generatePin() {
@@ -203,10 +230,111 @@ function generatePin() {
     output.textContent = pin;
 }
 
+function generatePasswordClient() {
+    const lengthInput = document.getElementById('length-slider');
+    const output = document.getElementById('password-display');
+    const outputWrap = document.getElementById('password-output');
+    const copyBtn = document.getElementById('copy-btn');
+    const stats = document.getElementById('password-stats');
+    const lengthText = document.getElementById('password-length');
+    const alertBox = document.getElementById('password-alert');
+    if (!lengthInput || !output || !outputWrap || !copyBtn) return;
+
+    let length = parseInt(lengthInput.value, 10);
+    if (Number.isNaN(length)) {
+        length = 16;
+    }
+    length = Math.min(50, Math.max(8, length));
+    lengthInput.value = length;
+    updateLengthValue();
+
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const digits = "0123456789";
+    const symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?";
+    const all = lower + upper + digits + symbols;
+
+    const chars = [
+        lower[Math.floor(Math.random() * lower.length)],
+        upper[Math.floor(Math.random() * upper.length)],
+        digits[Math.floor(Math.random() * digits.length)],
+        symbols[Math.floor(Math.random() * symbols.length)]
+    ];
+
+    for (let i = chars.length; i < length; i += 1) {
+        chars.push(all[Math.floor(Math.random() * all.length)]);
+    }
+
+    for (let i = chars.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = chars[i];
+        chars[i] = chars[j];
+        chars[j] = temp;
+    }
+
+    const generated = chars.join('');
+    output.textContent = generated;
+    copyBtn.classList.remove('success');
+    const icon = document.getElementById('copy-icon');
+    if (icon) icon.textContent = 'Copy';
+    if (stats) stats.style.display = 'flex';
+    if (lengthText) lengthText.textContent = `${generated.length} characters`;
+    if (alertBox) alertBox.style.display = 'block';
+    outputWrap.style.display = 'block';
+}
+
 function copyPin() {
     const output = document.getElementById('pin-output');
     const copyBtn = document.getElementById('copy-pin-btn');
     const copyIcon = document.getElementById('copy-pin-icon');
+    if (!output || !copyBtn || !copyIcon) return;
+
+    navigator.clipboard.writeText(output.textContent).then(function() {
+        copyIcon.textContent = 'Copied';
+        copyBtn.classList.add('success');
+
+        setTimeout(() => {
+            copyBtn.classList.remove('success');
+            copyIcon.textContent = 'Copy';
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+const PASSPHRASE_WORDS = [
+    "river", "storm", "slate", "ember", "forest", "cobalt", "anchor", "harbor",
+    "sunset", "prairie", "lumen", "atlas", "signal", "thrive", "meadow", "cinder",
+    "summit", "breeze", "fossil", "glacier", "saffron", "canyon", "terra", "pulse",
+    "orbit", "drift", "marble", "velvet", "spruce", "sierra", "ripple", "grove"
+];
+
+function generatePassphrase() {
+    const countInput = document.getElementById('phrase-words');
+    const sepInput = document.getElementById('phrase-separator');
+    const output = document.getElementById('passphrase-output');
+    if (!countInput || !sepInput || !output) return;
+
+    let count = parseInt(countInput.value, 10);
+    if (Number.isNaN(count)) {
+        count = 4;
+    }
+    count = Math.min(8, Math.max(3, count));
+    countInput.value = count;
+
+    const separator = sepInput.value !== undefined ? sepInput.value : "-";
+    const words = [];
+    for (let i = 0; i < count; i += 1) {
+        const idx = Math.floor(Math.random() * PASSPHRASE_WORDS.length);
+        words.push(PASSPHRASE_WORDS[idx]);
+    }
+    output.textContent = words.join(separator);
+}
+
+function copyPassphrase() {
+    const output = document.getElementById('passphrase-output');
+    const copyBtn = document.getElementById('copy-passphrase-btn');
+    const copyIcon = document.getElementById('copy-passphrase-icon');
     if (!output || !copyBtn || !copyIcon) return;
 
     navigator.clipboard.writeText(output.textContent).then(function() {
