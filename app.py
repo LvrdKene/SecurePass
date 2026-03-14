@@ -5,9 +5,11 @@ import string
 import re
 import secrets
 from datetime import datetime
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-fallback-key")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
 
 # Import functions from existing files
@@ -143,6 +145,12 @@ def _get_client_ip() -> str:
 @app.before_request
 def log_request_ip() -> None:
     ip = _get_client_ip()
+    app.logger.info(
+        "headers xff=%s xreal=%s remote_addr=%s",
+        request.headers.get("X-Forwarded-For"),
+        request.headers.get("X-Real-IP"),
+        request.remote_addr
+    )
     app.logger.info("request ip=%s method=%s path=%s", ip, request.method, request.path)
 
 
