@@ -4,6 +4,7 @@ import random
 import string
 import re
 import secrets
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-fallback-key")
@@ -127,6 +128,22 @@ def _strength_label(score: int) -> str:
     if score == 5:
         return "MEDIUM"
     return "STRONG"
+
+def _get_client_ip() -> str:
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        # X-Forwarded-For can be a list: client, proxy1, proxy2
+        return xff.split(",")[0].strip()
+    x_real = request.headers.get("X-Real-IP")
+    if x_real:
+        return x_real.strip()
+    return request.remote_addr or "unknown"
+
+
+@app.before_request
+def log_request_ip() -> None:
+    ip = _get_client_ip()
+    app.logger.info("request ip=%s method=%s path=%s", ip, request.method, request.path)
 
 
 

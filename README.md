@@ -21,3 +21,10 @@ A simple web application for generating secure passwords and checking password s
 - Passwords are generated client-side and not stored
 - No user data is collected or stored
 - For production, set the `SECRET_KEY` environment variable to a secure random value
+- If you enable request logging, add a privacy notice and treat IP addresses as personal data.
+
+## IP Logging (Optional)
+
+This app can log client IPs using `X-Forwarded-For` / `X-Real-IP` headers when behind Render.
+If you enable this, add a privacy notice to your site and consider streaming logs to a service
+like Better Stack or Papertrail via Render's Log Streams.
