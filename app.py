@@ -40,6 +40,23 @@ def generate_password(length):
     return ''.join(password)
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WORDLIST_PATH = os.path.join(BASE_DIR, "wordlist.txt")
+
+
+def _load_wordlist() -> list[str]:
+    try:
+        with open(WORDLIST_PATH, "r", encoding="utf-8") as handle:
+            words = [line.strip().lower() for line in handle if line.strip()]
+        words = [w for w in words if w.isalpha()]
+        return words
+    except OSError:
+        return ["anchor", "forest", "ember", "river"]
+
+
+WORDLIST = _load_wordlist()
+
+
 def generate_pin(length: int) -> str:
     return "".join(secrets.choice(string.digits) for _ in range(length))
 
@@ -60,7 +77,7 @@ def _random_word(min_len: int = 4, max_len: int = 8) -> str:
 
 
 def generate_passphrase(word_count: int, separator: str) -> str:
-    words = [_random_word() for _ in range(word_count)]
+    words = [secrets.choice(WORDLIST) for _ in range(word_count)]
     return separator.join(words)
 
 
