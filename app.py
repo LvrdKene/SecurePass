@@ -6,10 +6,18 @@ import re
 import secrets
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
+import logging
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-fallback-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+
+if __name__ != '__main__':
+    # Ensure Flask logs propagate to Gunicorn/Render.
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    if gunicorn_logger.handlers:
+        app.logger.handlers = gunicorn_logger.handlers
+        app.logger.setLevel(gunicorn_logger.level)
 
 
 # Import functions from existing files
