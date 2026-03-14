@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 import os
 import random
 import string
 import re
+import secrets
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-fallback-key")
@@ -37,6 +38,30 @@ def generate_password(length):
 
     # Convert list back to string
     return ''.join(password)
+
+
+def generate_pin(length: int) -> str:
+    return "".join(secrets.choice(string.digits) for _ in range(length))
+
+
+def _random_word(min_len: int = 4, max_len: int = 8) -> str:
+    consonants = "bcdfghjklmnpqrstvwxyz"
+    vowels = "aeiou"
+    length = secrets.choice(range(min_len, max_len + 1))
+    chars = []
+    use_consonant = True
+    for _ in range(length):
+        if use_consonant:
+            chars.append(secrets.choice(consonants))
+        else:
+            chars.append(secrets.choice(vowels))
+        use_consonant = not use_consonant
+    return "".join(chars)
+
+
+def generate_passphrase(word_count: int, separator: str) -> str:
+    words = [_random_word() for _ in range(word_count)]
+    return separator.join(words)
 
 
 def check_password_strength(password: str) -> tuple[int, list[str]]:
@@ -94,21 +119,9 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/generate', methods=['GET', 'POST'])
+@app.route('/generate', methods=['GET'])
 def generate():
     generated_password = None
-    if request.method == 'POST':
-        try:
-            length = int(request.form['length'])
-            if length < 8:
-                flash('Password length must be at least 8 characters.', 'warning')
-            elif length > 50:
-                flash('Password length must be at most 50 characters.', 'warning')
-            else:
-                generated_password = generate_password(length)
-                flash('Password generated successfully!', 'success')
-        except ValueError:
-            flash('Please enter a valid number for length.', 'danger')
     return render_template('generate.html', generated_password=generated_password)
 
 
@@ -128,6 +141,45 @@ def check():
             if not issues:
                 flash('Password strength checked successfully!', 'success')
     return render_template('check.html', score=score, issues=issues, strength=strength, password=password)
+
+
+@app.route('/api/password', methods=['POST'])
+def api_password():
+    data = request.get_json(silent=True) or {}
+    try:
+        length = int(data.get('length', 16))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid length"}), 400
+    if length < 8 or length > 50:
+        return jsonify({"error": "Length must be between 8 and 50"}), 400
+    return jsonify({"password": generate_password(length), "length": length})
+
+
+@app.route('/api/pin', methods=['POST'])
+def api_pin():
+    data = request.get_json(silent=True) or {}
+    try:
+        length = int(data.get('length', 6))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid length"}), 400
+    if length < 4 or length > 12:
+        return jsonify({"error": "Length must be between 4 and 12"}), 400
+    return jsonify({"pin": generate_pin(length), "length": length})
+
+
+@app.route('/api/passphrase', methods=['POST'])
+def api_passphrase():
+    data = request.get_json(silent=True) or {}
+    try:
+        count = int(data.get('words', 4))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid word count"}), 400
+    if count < 3 or count > 8:
+        return jsonify({"error": "Word count must be between 3 and 8"}), 400
+    separator = data.get('separator', '-')
+    if not isinstance(separator, str):
+        separator = '-'
+    return jsonify({"passphrase": generate_passphrase(count, separator), "words": count})
 
 
 if __name__ == '__main__':

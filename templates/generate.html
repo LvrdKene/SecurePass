@@ -61,7 +61,8 @@
                                     <small class="text-muted">50</small>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-primary w-100 btn-lg" onclick="generatePasswordClient()">Generate Secure Password</button>
+                            <button type="button" class="btn btn-primary w-100" onclick="generatePasswordClient()">Generate Secure Password</button>
+                            <div class="form-text mt-2">Passwords are generated locally and never stored.</div>
                         </form>
                         </div>
 
@@ -135,13 +136,13 @@
 
                     <div id="passphrase-output-area" style="display: none;">
                         <div class="password-output d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <span id="passphrase-output">river-storm-slate-ember</span>
+                            <span id="passphrase-output">A memorable phrase will appear here.</span>
                             <button class="copy-chip" type="button" onclick="copyPassphrase()" id="copy-passphrase-btn">
                                 <span id="copy-passphrase-icon">Copy</span>
                             </button>
                         </div>
                         <div class="alert alert-info mt-4">
-                            <strong>Passphrase ready.</strong> Generate again for a different one.
+                            <strong>Tip:</strong> Generate again if you want a different phrase.
                         </div>
                     </div>
                 </div>
@@ -223,11 +224,22 @@ function generatePin() {
     length = Math.min(12, Math.max(4, length));
     lengthInput.value = length;
 
-    let pin = '';
-    for (let i = 0; i < length; i += 1) {
-        pin += Math.floor(Math.random() * 10).toString();
-    }
-    output.textContent = pin;
+    fetch('/api/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ length })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            output.textContent = data.error;
+            return;
+        }
+        output.textContent = data.pin;
+    })
+    .catch(() => {
+        output.textContent = 'Unable to generate PIN';
+    });
 }
 
 function generatePasswordClient() {
@@ -248,39 +260,33 @@ function generatePasswordClient() {
     lengthInput.value = length;
     updateLengthValue();
 
-    const lower = "abcdefghijklmnopqrstuvwxyz";
-    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const digits = "0123456789";
-    const symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?";
-    const all = lower + upper + digits + symbols;
-
-    const chars = [
-        lower[Math.floor(Math.random() * lower.length)],
-        upper[Math.floor(Math.random() * upper.length)],
-        digits[Math.floor(Math.random() * digits.length)],
-        symbols[Math.floor(Math.random() * symbols.length)]
-    ];
-
-    for (let i = chars.length; i < length; i += 1) {
-        chars.push(all[Math.floor(Math.random() * all.length)]);
-    }
-
-    for (let i = chars.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const temp = chars[i];
-        chars[i] = chars[j];
-        chars[j] = temp;
-    }
-
-    const generated = chars.join('');
-    output.textContent = generated;
-    copyBtn.classList.remove('success');
-    const icon = document.getElementById('copy-icon');
-    if (icon) icon.textContent = 'Copy';
-    if (stats) stats.style.display = 'flex';
-    if (lengthText) lengthText.textContent = `${generated.length} characters`;
-    if (alertBox) alertBox.style.display = 'block';
-    outputWrap.style.display = 'block';
+    fetch('/api/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ length })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            output.textContent = data.error;
+            if (stats) stats.style.display = 'none';
+            if (alertBox) alertBox.style.display = 'none';
+            return;
+        }
+        output.textContent = data.password;
+        copyBtn.classList.remove('success');
+        const icon = document.getElementById('copy-icon');
+        if (icon) icon.textContent = 'Copy';
+        if (stats) stats.style.display = 'flex';
+        if (lengthText) lengthText.textContent = `${data.length} characters`;
+        if (alertBox) alertBox.style.display = 'block';
+        outputWrap.style.display = 'block';
+    })
+    .catch(() => {
+        output.textContent = 'Unable to generate password';
+        if (stats) stats.style.display = 'none';
+        if (alertBox) alertBox.style.display = 'none';
+    });
 }
 
 function copyPin() {
@@ -302,13 +308,6 @@ function copyPin() {
     });
 }
 
-const PASSPHRASE_WORDS = [
-    "river", "storm", "slate", "ember", "forest", "cobalt", "anchor", "harbor",
-    "sunset", "prairie", "lumen", "atlas", "signal", "thrive", "meadow", "cinder",
-    "summit", "breeze", "fossil", "glacier", "saffron", "canyon", "terra", "pulse",
-    "orbit", "drift", "marble", "velvet", "spruce", "sierra", "ripple", "grove"
-];
-
 function generatePassphrase() {
     const countInput = document.getElementById('phrase-words');
     const sepInput = document.getElementById('phrase-separator');
@@ -323,12 +322,24 @@ function generatePassphrase() {
     countInput.value = count;
 
     const separator = sepInput.value !== undefined ? sepInput.value : "-";
-    const words = [];
-    for (let i = 0; i < count; i += 1) {
-        const idx = Math.floor(Math.random() * PASSPHRASE_WORDS.length);
-        words.push(PASSPHRASE_WORDS[idx]);
-    }
-    output.textContent = words.join(separator);
+    fetch('/api/passphrase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: count, separator })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            output.textContent = data.error;
+            return;
+        }
+        output.textContent = data.passphrase;
+    const outputArea = document.getElementById('passphrase-output-area');
+    if (outputArea) outputArea.style.display = 'block';
+    })
+    .catch(() => {
+        output.textContent = 'Unable to generate passphrase';
+    });
 }
 
 function copyPassphrase() {
