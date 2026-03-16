@@ -31,7 +31,10 @@ def generate_password(length):
     digits = string.digits
     symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?"
 
-    # Ensure at least one character from each category
+    # Ensure first character is a letter (upper or lower)
+    first_char = random.choice(lowercase + uppercase)
+
+    # Ensure at least one character from each remaining category
     password = [
         random.choice(lowercase),
         random.choice(uppercase),
@@ -44,8 +47,10 @@ def generate_password(length):
     for i in range(length - 4):
         password.append(random.choice(allChar))
 
-    # Shuffle the password to randomize the order
+    # Shuffle the password to randomize the order, then force letter first
     random.shuffle(password)
+    if password[0] not in (lowercase + uppercase):
+        password[0] = first_char
 
     # Convert list back to string
     return ''.join(password)
