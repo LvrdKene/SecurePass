@@ -31,11 +31,11 @@ def generate_password(length):
     digits = string.digits
     symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?"
 
-    # Ensure first character is a letter (upper or lower)
+    # First character must be a letter (upper or lower)
     first_char = random.choice(lowercase + uppercase)
 
-    # Ensure at least one character from each remaining category
-    password = [
+    # Ensure required categories for the remaining characters
+    remaining = [
         random.choice(lowercase),
         random.choice(uppercase),
         random.choice(digits),
@@ -43,14 +43,13 @@ def generate_password(length):
     ]
 
     # Fill the rest with random characters from all categories
-    allChar = lowercase + uppercase + digits + symbols
-    for i in range(length - 4):
-        password.append(random.choice(allChar))
+    all_chars = lowercase + uppercase + digits + symbols
+    for _ in range(length - 1 - len(remaining)):
+        remaining.append(random.choice(all_chars))
 
-    # Shuffle the password to randomize the order, then force letter first
-    random.shuffle(password)
-    if password[0] not in (lowercase + uppercase):
-        password[0] = first_char
+    # Shuffle the remaining characters and prepend the first letter
+    random.shuffle(remaining)
+    password = [first_char] + remaining
 
     # Convert list back to string
     return ''.join(password)
@@ -67,7 +66,7 @@ def _load_wordlist() -> list[str]:
         words = [w for w in words if w.isalpha()]
         return words
     except OSError:
-        return ["anchor", "forest", "ember", "river"]
+        raise RuntimeError("wordlist.txt is missing")
 
 
 WORDLIST = _load_wordlist()
@@ -75,21 +74,6 @@ WORDLIST = _load_wordlist()
 
 def generate_pin(length: int) -> str:
     return "".join(secrets.choice(string.digits) for _ in range(length))
-
-
-def _random_word(min_len: int = 4, max_len: int = 8) -> str:
-    consonants = "bcdfghjklmnpqrstvwxyz"
-    vowels = "aeiou"
-    length = secrets.choice(range(min_len, max_len + 1))
-    chars = []
-    use_consonant = True
-    for _ in range(length):
-        if use_consonant:
-            chars.append(secrets.choice(consonants))
-        else:
-            chars.append(secrets.choice(vowels))
-        use_consonant = not use_consonant
-    return "".join(chars)
 
 
 def generate_passphrase(word_count: int, separator: str) -> str:
