@@ -1,14 +1,12 @@
 # Password Tools Web App
 
-A simple web application for generating secure passwords and checking password strength, with a modern web interface.
+A simple web application for generating secure passwords and checking password strength.
 
 ## Features
 
 - **Password Generator**: Create strong passwords with customizable length (8-50 characters)
 - **Password Strength Checker**: Analyze passwords and get detailed feedback
 - **Responsive Design**: Works on desktop and mobile devices
-- **Modern UI**: Clean, professional interface inspired by lab management systems
-
 
 ## Usage
 
@@ -20,11 +18,3 @@ A simple web application for generating secure passwords and checking password s
 
 - Passwords are generated client-side and not stored
 - No user data is collected or stored
-- For production, set the `SECRET_KEY` environment variable to a secure random value
-- If you enable request logging, add a privacy notice and treat IP addresses as personal data.
-
-## IP Logging (Optional)
-
-This app can log client IPs using `X-Forwarded-For` / `X-Real-IP` headers when behind Render.
-If you enable this, add a privacy notice to your site and consider streaming logs to a service
-like Better Stack or Papertrail via Render's Log Streams.
